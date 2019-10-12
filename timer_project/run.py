@@ -18,6 +18,8 @@ import flask
 from flask import request
 from werkzeug.datastructures import ImmutableMultiDict
 
+import RPi.GPIO as GPIO
+
 
 # add a Timer wrapper to allow time feedback
 # could put this into a class on its own...
@@ -81,9 +83,9 @@ def pi_after_timer_event() -> None:
 
 def pi_before_timer_event() -> None:
     """ function that gets called before the timer starts
-
     :return:
     """
+
     print("Start Job")
 
 
@@ -348,7 +350,7 @@ def ajax_start_event(
         seconds = float(seconds)
     except ValueError:
         return json_error("Non numeric value of time provided...")
-
+        
     run_time = 0
     run_time += hours * 60.0 * 60.0
     run_time += minutes * 60.0
@@ -367,6 +369,50 @@ def ajax_start_event(
         pi_before_timer_event()
         _app_time = FeedbackTimer(interval=run_time, function=pi_after_timer_event)
         _app_time.start()
+        timeMin = int(minutes)
+        timeSec = int(seconds)
+        print(timeMin)
+        # Defining the type of PIN declaration is being used.  BOARD is likely the best
+        # as it will not break if the pins are in a different position.
+        GPIO.setmode(GPIO.BOARD)
+        # GPIO pins for the Zero are:
+        #
+        # {GPIO # | Pin #}
+        #
+        # { 0 |   } { 1 |   } { 2 |  3} { 3 |  5} { 4 |  7}
+        # { 5 | 29} { 6 | 31} { 7 | 26} { 8 | 24} { 9 | 21}
+        # {10 | 19} {11 | 23} {12 | 32} {13 | 33} {14 |  8}
+        # {15 | 10} {16 | 36} {17 | 11} {18 | 12} {19 | 35}
+        # {20 | 38} {21 | 40} {22 | 15} {23 | 16} {24 | 18}
+        # {25 | 22} {26 | 37} {27 |   } {28 |   } {29 |   }
+        #
+        # ID_SD | ID_SC
+        # {27   |   28}
+        #
+        # Ground
+        # {6, 9, 14, 20, 25, 30, 34, 39}
+        #
+        # 3.3 V
+        # {1, 17}
+        #
+        # 5.0 V
+        # {2, 4, 14, 20 ,30 ,34}
+        #
+
+        # Sensor Input Definition
+        ClockPulse = 12
+
+        # Configuring GPIO for sensor inputs
+        GPIO.setup(ClockPulse, GPIO.OUT)
+
+        timeSec = timeSec + timeMin*60
+        # Hard coding an always on infinite loop
+        while seconds > 0:
+           GPIO.output(ClockPulse, GPIO.HIGH)
+           time.sleep(1)
+           GPIO.output(ClockPulse, GPIO.LOW)
+           time.sleep(1)
+           seconds = seconds - 2
 
     return json_ok("Ok")
 
