@@ -18,7 +18,7 @@ to perform the desired PI-Zero IO operations as needed...
 
 Python 3 should be installed on the pi-zero
 
-`pip install -r requirements.txt` should be run to install the required dependencies
+`pip3 install -r requirements.txt` should be run to install the required dependencies
 
 the use of a virtual environment (`python -m venv .\venv`) on the pi is optional.
 
