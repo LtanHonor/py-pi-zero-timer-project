@@ -20,7 +20,39 @@ from werkzeug.datastructures import ImmutableMultiDict
 
 import RPi.GPIO as GPIO
 
+# Defining the type of PIN declaration is being used.  BOARD is likely the best
+# as it will not break if the pins are in a different position.
+GPIO.setmode(GPIO.BOARD)
+# GPIO pins for the Zero are:
+#
+# {GPIO # | Pin #}
+#
+# { 0 |   } { 1 |   } { 2 |  3} { 3 |  5} { 4 |  7}
+# { 5 | 29} { 6 | 31} { 7 | 26} { 8 | 24} { 9 | 21}
+# {10 | 19} {11 | 23} {12 | 32} {13 | 33} {14 |  8}
+# {15 | 10} {16 | 36} {17 | 11} {18 | 12} {19 | 35}
+# {20 | 38} {21 | 40} {22 | 15} {23 | 16} {24 | 18}
+# {25 | 22} {26 | 37} {27 |   } {28 |   } {29 |   }
+#
+# ID_SD | ID_SC
+# {27   |   28}
+#
+# Ground
+# {6, 9, 14, 20, 25, 30, 34, 39}
+#
+# 3.3 V
+# {1, 17}
+#
+# 5.0 V
+# {2, 4, 14, 20 ,30 ,34}
+#
 
+# Sensor Input Definition
+ClockPulse = 12
+
+# Configuring GPIO for sensor inputs
+GPIO.setup(ClockPulse, GPIO.OUT)
+        
 # add a Timer wrapper to allow time feedback
 # could put this into a class on its own...
 class FeedbackTimer(Timer):
@@ -79,13 +111,13 @@ def pi_after_timer_event() -> None:
     :return:
     """
     print("Job Done")
+    GPIO.output(12, GPIO.LOW)
 
 
 def pi_before_timer_event() -> None:
     """ function that gets called before the timer starts
     :return:
     """
-
     print("Start Job")
 
 
@@ -95,6 +127,7 @@ def pi_timer_event_abort() -> None:
     :return:
     """
     print("Abort Job")
+    GPIO.output(12, GPIO.LOW)
 
 
 def json_error(message: str = "") -> str:
@@ -277,6 +310,7 @@ def ajax_get_status(
     with _app_lock:
         if _app_time is not None:
             if _app_time.is_alive():
+                GPIO.output(12, GPIO.HIGH)
                 time_state = True
                 time_left = _app_time.remaining()
             else:
@@ -368,54 +402,17 @@ def ajax_start_event(
 
         pi_before_timer_event()
         _app_time = FeedbackTimer(interval=run_time, function=pi_after_timer_event)
+
         _app_time.start()
+        timeHour = int(hours)
         timeMin = int(minutes)
         timeSec = int(seconds)
-        print(timeMin)
-        # Defining the type of PIN declaration is being used.  BOARD is likely the best
-        # as it will not break if the pins are in a different position.
-        GPIO.setmode(GPIO.BOARD)
-        # GPIO pins for the Zero are:
-        #
-        # {GPIO # | Pin #}
-        #
-        # { 0 |   } { 1 |   } { 2 |  3} { 3 |  5} { 4 |  7}
-        # { 5 | 29} { 6 | 31} { 7 | 26} { 8 | 24} { 9 | 21}
-        # {10 | 19} {11 | 23} {12 | 32} {13 | 33} {14 |  8}
-        # {15 | 10} {16 | 36} {17 | 11} {18 | 12} {19 | 35}
-        # {20 | 38} {21 | 40} {22 | 15} {23 | 16} {24 | 18}
-        # {25 | 22} {26 | 37} {27 |   } {28 |   } {29 |   }
-        #
-        # ID_SD | ID_SC
-        # {27   |   28}
-        #
-        # Ground
-        # {6, 9, 14, 20, 25, 30, 34, 39}
-        #
-        # 3.3 V
-        # {1, 17}
-        #
-        # 5.0 V
-        # {2, 4, 14, 20 ,30 ,34}
-        #
-
-        # Sensor Input Definition
-        ClockPulse = 12
-
-        # Configuring GPIO for sensor inputs
-        GPIO.setup(ClockPulse, GPIO.OUT)
-
-        timeSec = timeSec + timeMin*60
-        # Hard coding an always on infinite loop
-        while seconds > 0:
-           GPIO.output(ClockPulse, GPIO.HIGH)
-           time.sleep(1)
-           GPIO.output(ClockPulse, GPIO.LOW)
-           time.sleep(1)
-           seconds = seconds - 2
-
+        print(timeHour, "h ", timeMin, "m ", timeSec,"s")
+    GPIO.output(ClockPulse, GPIO.LOW)
     return json_ok("Ok")
 
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", debug=True, port=5000)  # run app in debug mode on port 5000
+#    app.run(host="0.0.0.0", debug=True, port=5000)  # run app in debug mode on port 5000
+    app.run(host="0.0.0.0", debug=False, port=5000)  # run app in debug mode on port 5000
+
